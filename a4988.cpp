@@ -1,9 +1,9 @@
 /*
-  a4988.cpp - - Arduino library for using the a4988 stepper driver
+  A4988.cpp - - Arduino library for using the A4988 stepper driver
   William Smith, 2014
 
   The A4988 stepper driver is for Pololu stepper driver boards
-  and compatible clones. These boards use the Allegro a4988
+  and compatible clones. These boards use the Allegro A4988
   stepper motor driver IC. (see Allegro website for datasheet)
 
   This library diverges from others that are around, in that it
@@ -36,60 +36,47 @@
 */
 
 #include "Arduino.h"
-#include "a4988.h"
+#include "A4988.h"
 
 // constructor to set up pins and initialize data
-a4988::a4988(int motor_steps, int dir_pin, int enable_pin, int step_pin)
+A4988::A4988(uint16_t motor_steps, uint8_t dir_pin, uint8_t enable_pin, uint8_t step_pin)
 {
    this->enable_pin = enable_pin;
-   this->dir_pin = dir_pin;
-   this->step_pin = step_pin;
+   this->dir_pin    = dir_pin;
+   this->step_pin   = step_pin;
 
    // setup the pins on the microcontroller:
    pinMode(this->dir_pin, OUTPUT);
    pinMode(this->enable_pin, OUTPUT);
    pinMode(this->step_pin, OUTPUT);
 
-   if(motor_steps != 0)
-   {
+   if(motor_steps != 0) {
       this->motor_steps = motor_steps;
-   }
-   else
-   {
-      this->motor_steps = 200;       // a common value for steppers
+   } else {
+      this->motor_steps = 200;
    }
 
-   // use setDelay to change before stepping, otherwise default
-   this->step_delay = 300;
-
+   this->step_delay = 200;
+   this->isEnabled  = 1;
+   digitalWrite(this->enable_pin, !this->isEnabled);
 }
 
-void a4988::enable(int enable)
+void A4988::enable(uint8_t enable)
 {
-   digitalWrite(this->enable_pin,enable);  // set enable pin on/off
+   this->isEnabled = enable;
+   digitalWrite(this->enable_pin, !this->isEnabled);
 }
 
-// set delay in microseconds, set before starting to step
-void a4988::setDelay(unsigned long delay)
+void A4988::setDirection(uint8_t direction)
 {
-   this->step_delay = delay;
-}
-
-// set direction: 0 or 1
-void a4988::setDirection(int direction)
-{
-   if(direction == 0)
-   {
-      digitalWrite(dir_pin,HIGH);
-   }
-   else
-   {
-      digitalWrite(dir_pin,LOW);
+   if(direction == 0) {
+      digitalWrite(dir_pin, HIGH);
+   } else {
+      digitalWrite(dir_pin, LOW);
    }
 }
 
-// step only once
-void a4988::stepOnce(void)
+void A4988::microStep(void)
 {
     digitalWrite(step_pin, HIGH);
     delayMicroseconds(this->step_delay);
@@ -97,23 +84,22 @@ void a4988::stepOnce(void)
     delayMicroseconds(this->step_delay);
 }
 
-// step given number of times
-void a4988::step(unsigned long num_steps)
+void A4988::step(uint16_t steps)
 {
-   unsigned long x;
-   for(x = 0; x < num_steps * 16; x++)
-   {
-      this->stepOnce();
+   uint32_t x;
+
+   for (x = 0; x < steps * MICROSTEPS; x++) {
+      this->microStep();
    }
 }
 
-void a4988::step(uint16_t steps, uint8_t dir)
+void A4988::step(uint16_t steps, uint8_t dir)
 {
    setDirection(dir);
    step(steps);
 }
 
-void a4988::onestep(uint8_t dir)
+void A4988::onestep(uint8_t dir)
 {
     step(1, dir);
 }

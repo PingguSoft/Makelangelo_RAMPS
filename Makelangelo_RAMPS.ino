@@ -6,12 +6,15 @@
 // http://www.github.com/MarginallyClever/Makelangelo for more information.
 
 
+#define MOTOR_ADAFRUIT_SHIELD1  1
+#define MOTOR_ADAFRUIT_DRAWBOT  1
+#define MOTOR_ADAFRUIT_SHIELD2  2
+#define MOTOR_RAMPS             3
+
 //------------------------------------------------------------------------------
 // CONSTANTS
 //------------------------------------------------------------------------------
-//#define MOTHERBOARD 1  // Adafruit Motor Shield 1
-//#define MOTHERBOARD 2  // Adafruit Motor Shield 2
-#define MOTHERBOARD 3  // RAMPS 1.4
+#define MOTHERBOARD     MOTOR_RAMPS
 
 // machine style
 #define POLARGRAPH2  // uncomment this line if you use a polargraph like the Makelangelo
@@ -19,7 +22,7 @@
 //#define TRADITIONALXY  // uncomment this line if you use a traditional XY setup.
 
 // Increase this number to see more output
-#define VERBOSE         (2)
+#define VERBOSE         (0)
 
 // Comment out this line to disable SD cards.
 //#define USE_SD_CARD       (1)
@@ -78,10 +81,13 @@
 #define MAX_BUF         (64)
 
 // servo pin differs based on device
+#if (MOTHERBOARD == MOTOR_RAMPS)
+#define SERVO_PIN1      (11)
+#else
 #define SERVO_PIN1      (10)
 #define SERVO_PIN2      (9)
-//#define SERVO_PIN       SERVO_PIN1  // switch if you want to use the other pin.  Thanks, Aleksey!
-#define SERVO_PIN       11
+#endif
+#define SERVO_PIN       SERVO_PIN1  // switch if you want to use the other pin.  Thanks, Aleksey!
 
 #define TIMEOUT_OK      (1000)  // 1/4 with no instruction?  Make sure PC knows we are waiting.
 
@@ -90,12 +96,12 @@
 #endif
 
 
-#if MOTHERBOARD == 1 || MOTHERBOARD == 3
+#if (MOTHERBOARD == MOTOR_ADAFRUIT_DRAWBOT) || (MOTHERBOARD == MOTOR_RAMPS)
 #define M1_STEP  m1.step
 #define M2_STEP  m2.step
 #define M1_ONESTEP(x)  m1.onestep(x)
 #define M2_ONESTEP(x)  m2.onestep(x)
-#elif MOTHERBOARD == 2
+#elif (MOTHERBOARD == MOTOR_ADAFRUIT_SHIELD2)
 #define M1_STEP  m1->step
 #define M2_STEP  m2->step
 #define M1_ONESTEP(x)  m1->onestep(x,SINGLE)
@@ -118,15 +124,15 @@
 //------------------------------------------------------------------------------
 // INCLUDES
 //------------------------------------------------------------------------------
-#if MOTHERBOARD == 1
+#if (MOTHERBOARD == MOTOR_ADAFRUIT_DRAWBOT)
 #include <SPI.h>  // pkm fix for Arduino 1.5
 // Adafruit motor driver library
 #include <AFMotorDrawbot.h>
-#elif MOTHERBOARD == 2
+#elif (MOTHERBOARD == MOTOR_ADAFRUIT_SHIELD2)
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
-#elif MOTHERBOARD == 3
-#include "a4988.h"
+#elif (MOTHERBOARD == MOTOR_RAMPS)
+#include "A4988.h"
 #endif
 
 // Default servo library
@@ -147,18 +153,18 @@
 //------------------------------------------------------------------------------
 // VARIABLES
 //------------------------------------------------------------------------------
-#if MOTHERBOARD == 1
+#if (MOTHERBOARD == MOTOR_ADAFRUIT_DRAWBOT)
 // Initialize Adafruit stepper controller
 static AF_Stepper m1((int)STEPS_PER_TURN, M2_PIN);
 static AF_Stepper m2((int)STEPS_PER_TURN, M1_PIN);
-#elif MOTHERBOARD == 2
+#elif (MOTHERBOARD == MOTOR_ADAFRUIT_SHIELD2)
 // Initialize Adafruit stepper controller
 Adafruit_MotorShield AFMS0 = Adafruit_MotorShield(SHIELD_ADDRESS);
 Adafruit_StepperMotor *m1;
 Adafruit_StepperMotor *m2;
-#elif MOTHERBOARD == 3
-static a4988 m1(200, 28, 24, 26);
-static a4988 m2(200, 34, 30, 36);
+#elif (MOTHERBOARD == MOTOR_RAMPS)
+static A4988 m1(200, 28, 24, 26);
+static A4988 m2(200, 34, 30, 36);
 #endif
 
 static Servo s1;
@@ -746,27 +752,26 @@ static void SD_ProcessFile(char *filename) {
 
 //------------------------------------------------------------------------------
 void disable_motors() {
-#if MOTHERBOARD == 1
+#if (MOTHERBOARD == MOTOR_ADAFRUIT_DRAWBOT)
   m1.release();
   m2.release();
-#elif MOTHERBOARD == 2
+#elif (MOTHERBOARD == MOTOR_ADAFRUIT_SHIELD2)
   m1->release();
   m2->release();
-#elif MOTHERBOARD == 3
-  m1.enable(1);
-  m2.enable(1);
+#elif (MOTHERBOARD == MOTOR_RAMPS)
+  m1.enable(0);
+  m2.enable(0);
 #endif
 }
 
-
 void activate_motors() {
-#if MOTHERBOARD == 3
-  m1.enable(0);
-  m2.enable(0);
-#else
+#if (MOTHERBOARD == MOTOR_RAMPS)
+  m1.enable(1);
+  m2.enable(1);
+#endif
+
   M1_STEP(1,1);  M1_STEP(1,-1);
   M2_STEP(1,1);  M2_STEP(1,-1);
-#endif
 }
 
 
@@ -1043,7 +1048,7 @@ void setup() {
   SD_ListFiles();
 #endif
 
-#if MOTHERBOARD == 2
+#if (MOTHERBOARD == MOTOR_ADAFRUIT_SHIELD2)
   // start the shield
   AFMS0.begin();
   m1 = AFMS0.getStepper(STEPS_PER_TURN, M2_PIN);
@@ -1054,7 +1059,7 @@ void setup() {
   strcpy(mode_name,"mm");
   mode_scale=0.1;
 
-#if MOTHERBOARD == 2
+#if (MOTHERBOARD == MOTOR_ADAFRUIT_SHIELD2)
   // Change the i2c clock from 100KHz to 400KHz
   // https://learn.adafruit.com/adafruit-motor-shield-v2-for-arduino/faq
   //TWBR = ((F_CPU /400000l) - 16) / 2;
